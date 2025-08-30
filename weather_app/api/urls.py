@@ -1,9 +1,7 @@
-from django.urls import include, path
-from rest_framework import routers
-
-
-router = routers.DefaultRouter()
+from django.urls import path
+from api import views
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path('search-locations/', views.LocationView.as_view(), name='location'),
+    path('current-weather/', views.CurrentWeatherView.as_view(), name='current_weather'),
 ]
