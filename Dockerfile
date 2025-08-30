@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y curl
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx/ bin/
 
 COPY weather_app/requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY weather_app/ .
 
