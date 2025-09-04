@@ -1,70 +1,63 @@
-import os
-
-import requests
-from django.http import JsonResponse
-from dotenv import load_dotenv
 from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
-from api.models import *
-
-load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env'))
-
+from .serializers import CurrentWeatherSerializer, LocationSearchSerializer
+from api.services.location_service import (
+    fetch_locations_from_api,
+    clean_location_results,
+)
+from api.services.weather_service import (
+    fetch_weather_from_api,
+    save_weather_data,
+)
 
 class LocationView(APIView):
     def get(self, request):
-        q = request.GET.get('q')
+        q = request.GET.get("q")
         if not q:
-            return JsonResponse(
-                {'error': 'Missing query parameter'}, 
-                status=400
+            return Response(
+                {"error": "Missing query parameter"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            parts = [p.strip() for p in q.split(',')]
+        parts = [p.strip() for p in q.split(",")]
+        city_name, state_code, country_code = "", "", ""
 
-            city_name = ""
-            state_code = ""
-            country_code = ""
-
-            if len(parts) == 1:
-                city_name = parts[0]
-            elif len(parts) == 2:
-                city_name = parts[0]
-                country_code = parts[1]
-            elif len(parts) == 3:
-                city_name = parts[0]
-                state_code = parts[1]
-                country_code = parts[2]
-            else:
-                return JsonResponse(
-                    {'error': 'Invalid query format'}, 
-                    status=400
-                )
-
-        except Exception as exc:
-            return JsonResponse({'error': str(exc)}, status=400)
-
-        api_key = os.getenv("WEATHERMAP_API_KEY")
-        url = (
-            f"http://api.openweathermap.org/geo/1.0/direct?"
-            f"q={city_name},{state_code},{country_code}&limit=5&appid={api_key}"
+        if len(parts) == 1:
+            city_name = parts[0]
+        elif len(parts) == 2:
+            city_name, country_code = parts
+        elif len(parts) == 3:
+            city_name, state_code, country_code = parts
+        else:
+            return Response(
+                {"error": "Invalid query format"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+        api_response = fetch_locations_from_api(
+            city_name, state_code, country_code
         )
 
-        response = requests.get(url)
-        if response.status_code == 200:
-            if response.json() == []:
-                return JsonResponse(
-                    {'error': 'No locations found'},
-                    status=404
-                )
-            response_data = response.json()
-            for location in response_data:
-                location.pop('local_names', None)
-            return JsonResponse(response_data, safe=False)
-        return JsonResponse(
-            {'error': 'Failed to fetch location data'}, 
-            status=response.status_code
-        )
+        if api_response.status_code != 200:
+            return Response(
+                {"error": "Failed to fetch location data"},
+                status=api_response.status_code,
+            )
+
+        response_json = api_response.json()
+        if not response_json:
+            return Response(
+                {"error": "No locations found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        unique_locations = clean_location_results(response_json)
+
+        serializer = LocationSearchSerializer(unique_locations, many=True)
+        return Response(serializer.data)
+
 
 
 class CurrentWeatherView(APIView):
@@ -72,26 +65,29 @@ class CurrentWeatherView(APIView):
         lat = request.GET.get('lat')
         lon = request.GET.get('lon')
         units = request.GET.get('units', 'metric')
+        precise_name = request.GET.get('precise_name')
+        state = request.GET.get('state')
 
         if not lat or not lon:
-            return JsonResponse(
-                {'error': 'Missing latitude or longitude parameter'}, 
-                status=400
+            return Response(
+                {"error": "Missing latitude or longitude parameter"},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if units and units not in ['standard', 'metric', 'imperial']:
+        if units not in ['standard', 'metric', 'imperial']:
             units = 'metric'
 
-        api_key = os.getenv("WEATHERMAP_API_KEY")
-        url = (
-            f"https://api.openweathermap.org/data/2.5/weather?"
-            f"lat={lat}&lon={lon}&units={units}&appid={api_key}"
+        api_response = fetch_weather_from_api(lat, lon, units)
+
+        if api_response.status_code != 200:
+            return Response(
+                {"error": "Failed to fetch weather data"},
+                status=api_response.status_code,
+            )
+
+        current_weather = save_weather_data(
+            api_response.json(), precise_name, state
         )
 
-        response = requests.get(url)
-        if response.status_code == 200:
-            return JsonResponse(response.json(), safe=False)
-        return JsonResponse(
-            {'error': 'Failed to fetch weather data'}, 
-            status=response.status_code
-        )
+        serializer = CurrentWeatherSerializer(current_weather)
+        return Response(serializer.data)
