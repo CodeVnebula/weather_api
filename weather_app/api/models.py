@@ -52,3 +52,5 @@ class Weather(models.Model):
 class CurrentWeather(models.Model):
     location = models.OneToOneField(Location, on_delete=models.CASCADE)
     weather = models.OneToOneField(Weather, on_delete=models.CASCADE)
+    last_updated = models.DateTimeField(auto_now=True)
+    

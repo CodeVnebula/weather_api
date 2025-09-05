@@ -1,6 +1,9 @@
+from datetime import datetime, timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
+from .models import Location, CurrentWeather
 
 from .serializers import CurrentWeatherSerializer, LocationSearchSerializer
 from api.services.location_service import (
@@ -11,6 +14,8 @@ from api.services.weather_service import (
     fetch_weather_from_api,
     save_weather_data,
 )
+
+from .config.settings import LOCATION_TOLERANCE, CACHE_EXPIRY
 
 class LocationView(APIView):
     def get(self, request):
@@ -76,6 +81,36 @@ class CurrentWeatherView(APIView):
 
         if units not in ['standard', 'metric', 'imperial']:
             units = 'metric'
+            
+        try:
+            lat_rounded = round(float(lat), 4)
+            lon_rounded = round(float(lon), 4)
+        except (TypeError, ValueError):
+            return Response(
+                {"error": "Invalid latitude or longitude value"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+        location = Location.objects.filter(
+            lat__gte=lat_rounded - LOCATION_TOLERANCE, 
+            lat__lte=lat_rounded + LOCATION_TOLERANCE,
+            lon__gte=lon_rounded - LOCATION_TOLERANCE, 
+            lon__lte=lon_rounded + LOCATION_TOLERANCE
+        ).first()
+        
+        if location:
+            current_weather = CurrentWeather.objects.filter(
+                location=location).first()
+            if current_weather and current_weather.last_updated:
+                if (
+                    datetime.now(timezone.utc) - current_weather.last_updated
+                ).total_seconds() < CACHE_EXPIRY:
+                    return Response({
+                        "data": CurrentWeatherSerializer(current_weather).data,
+                        "source": "database",
+                        "location": {"lat": location.lat, "lon": location.lon},
+                        "rounded": {"lat": lat_rounded, "lon": lon_rounded}
+                    })
 
         api_response = fetch_weather_from_api(lat, lon, units)
 
@@ -90,4 +125,9 @@ class CurrentWeatherView(APIView):
         )
 
         serializer = CurrentWeatherSerializer(current_weather)
-        return Response(serializer.data)
+        return Response(
+            {
+                "data": serializer.data,
+                "source": "api"
+            }
+        )
