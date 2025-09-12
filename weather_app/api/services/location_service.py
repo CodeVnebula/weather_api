@@ -29,3 +29,35 @@ def clean_location_results(response_json):
             unique.append(location)
 
     return unique
+
+def extract_location_data(
+        response_json, state=None, precise_name=None, population=0
+    ):
+    # Extracting location from "city" dict if it exists
+    location_json = response_json.get("city", response_json)
+
+    # Determine population: if location_json population is 
+    # 0 and parameter population is not 0, use parameter
+    loc_population = location_json.get("population", 0)
+    if loc_population == 0 and population != 0:
+        final_population = population
+    else:
+        final_population = loc_population
+
+    location_data = {
+        "name": location_json.get("name"),
+        "precise_name": precise_name.strip() if precise_name else None,
+        "state": state.strip() if state else None,
+        "lat": location_json.get("coord", {}).get("lat"),
+        "lon": location_json.get("coord", {}).get("lon"),
+        "country": location_json.get("country")
+        or location_json.get("sys", {}).get("country", ""),
+        "population": final_population,
+        "timezone": location_json.get("timezone"),
+        "sunrise": location_json.get("sunrise")
+        or location_json.get("sys", {}).get("sunrise"),
+        "sunset": location_json.get("sunset")
+        or location_json.get("sys", {}).get("sunset"),
+    }
+
+    return location_data
