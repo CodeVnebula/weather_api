@@ -36,9 +36,9 @@ services:
 
   celery:
     build: .
-    command: celery -A weather_app worker -l info
+    command: celery -A weather_app.celery worker -l info
     volumes:
-      - .:/app
+      - .:/weather_app
     depends_on:
       - web
       - redis
@@ -46,9 +46,9 @@ services:
 
   celery-beat:
     build: .
-    command: celery -A weather_app beat -l info
+    command: celery -A weather_app.celery beat -l info
     volumes:
-      - .:/app
+      - .:/weather_app
     depends_on:
       - web
       - redis
