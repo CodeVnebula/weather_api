@@ -28,6 +28,31 @@ services:
       retries: 5
       start_period: 30s
       timeout: 10s
+    
+  redis:
+    image: redis:6
+    ports:
+      - "6379:6379"
+
+  celery:
+    build: .
+    command: celery -A weather_app.celery worker -l info
+    volumes:
+      - .:/weather_app
+    depends_on:
+      - web
+      - redis
+      - db
+
+  celery-beat:
+    build: .
+    command: celery -A weather_app.celery beat -l info
+    volumes:
+      - .:/weather_app
+    depends_on:
+      - web
+      - redis
+      - db
 
 volumes:
   weather_db:

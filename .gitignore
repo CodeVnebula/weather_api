@@ -5,3 +5,4 @@ __pycache__
 *.pyc
 to-do.txt
 docker_commands.txt
+celerybeat-schedule
