@@ -243,7 +243,18 @@ class ForecastView(APIView):
         serializer = ForecastSerializer(forecast)
         return Response(
             {
-                "data": serializer.data,
-                "source": "api"
+            "data": serializer.data,
+            "source": "api"
             }
         )
+
+class HealthCheckView(APIView):
+    def get(self, request):
+        health_info = {
+            "status": "ok",
+            "time": datetime.now(timezone.utc).isoformat(),
+            "services": {
+                "database": "connected" if Location.objects.exists() else "no data",
+            }
+        }
+        return Response(health_info, status=status.HTTP_200_OK)
