@@ -4,7 +4,7 @@ from .models import CurrentWeather, Forecast
 
 @shared_task
 def cleanup_old_weather_data():
-    threshold_date = timezone.now() - timezone.timedelta(minutes=1)
+    threshold_date = timezone.now() - timezone.timedelta(days=2)
     batch_size = 1000
     qs = CurrentWeather.objects.filter(last_updated__lt=threshold_date)
     while qs.exists():

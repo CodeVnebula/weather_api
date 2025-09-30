@@ -140,6 +140,6 @@ CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 CELERY_BEAT_SCHEDULE = {
     'cleanup-task': {
         'task': 'api.tasks.cleanup_old_weather_data',
-        'schedule': timedelta(seconds=30),  # Run every 30 seconds
+        'schedule': timedelta(days=7),
     },
 }
