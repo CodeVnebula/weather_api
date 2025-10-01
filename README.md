@@ -1,4 +1,4 @@
-# Weather App API 🌤️
+# Weather API 🌤️
 
 A lightweight RESTful API built with **Django + Django REST Framework** for fetching weather data.
 Supports containerized deployment with Docker.
@@ -43,8 +43,8 @@ Supports containerized deployment with Docker.
 1. **Clone this repo**
 
    ```bash
-   git clone https://github.com/CodeVnebula/weather_app_api.git
-   cd weather_app_api
+   git clone https://github.com/CodeVnebula/weather_api.git
+   cd weather_api
    ```
 2. **Create a virtual environment & install dependencies**
 
